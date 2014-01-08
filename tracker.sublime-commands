@@ -1,0 +1,10 @@
+[
+    {
+        "caption": "Track Color Scheme",
+        "command": "track_current_color_scheme"
+    },
+    {
+        "caption": "Switch Color Scheme",
+        "command": "switch_color_scheme"
+    },
+]
