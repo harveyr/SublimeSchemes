@@ -7,19 +7,20 @@ import sublime_plugin
 
 PLUGIN_PATH = os.path.split(os.path.realpath(__file__))[0]
 SAVE_PATH = os.path.join(PLUGIN_PATH, 'history.sav')
+SETTINGS_FILE = 'Preferences.sublime-settings'
 
 
-settings = sublime.load_settings('Preferences.sublime-settings')
+def get_settings():
+    return sublime.load_settings(SETTINGS_FILE)
 
 
 class TrackedColorSchemes(object):
     def __init__(self):
-        self.history = []
         try:
             with open(SAVE_PATH, 'rb') as f:
                 self.history = pickle.load(f)
         except (FileNotFoundError, EOFError):
-            pass
+            self.history = []
 
     def _pickle(self):
         with open(SAVE_PATH, 'wb') as f:
@@ -36,24 +37,42 @@ class TrackedColorSchemes(object):
         self._pickle()
 
     def scheme_changed(self):
+        settings = get_settings()
         scheme = settings.get('color_scheme')
         # Promote only if not already tracking. Otherwise the order will get
         # messed up while the user is highlighting different schemes.
         if not scheme in self.history:
             self.promote(scheme)
 
+    def remove(self, index):
+        self.history.pop(index)
+        self._pickle()
+
 
 tracked_schemes = TrackedColorSchemes()
-settings.add_on_change('color_scheme', tracked_schemes.scheme_changed)
+get_settings().add_on_change('color_scheme', tracked_schemes.scheme_changed)
 
 
-class SwitchColorSchemeCommand(sublime_plugin.TextCommand):
-    def run(self, edit):
+class BaseCommand(sublime_plugin.TextCommand):
+    def show_quick_panel(self, on_done, on_highlight=None):
         sublime.active_window().show_quick_panel(
             [os.path.split(f)[1] for f in tracked_schemes.history],
-            self._switch,
-            on_highlight=self._highlight
+            on_done,
+            on_highlight=on_highlight
         )
+
+
+class RemoveTrackedColorSchemeCommand(BaseCommand):
+    def run(self, edit):
+        self.show_quick_panel(self._remove)
+
+    def _remove(self, index):
+        tracked_schemes.remove(index)
+
+
+class SwitchColorSchemeCommand(BaseCommand):
+    def run(self, edit):
+        self.show_quick_panel(self._switch, on_highlight=self._highlight)
 
     def _highlight(self, index):
         self._switch(index, reorder=False)
@@ -66,6 +85,7 @@ class SwitchColorSchemeCommand(sublime_plugin.TextCommand):
         if reorder:
             tracked_schemes.promote(scheme)
 
+        settings = get_settings()
         if scheme == settings.get('color_scheme'):
             return
 

@@ -7,4 +7,8 @@
         "caption": "Switch Color Scheme",
         "command": "switch_color_scheme"
     },
+    {
+        "caption": "Remove Tracked Color Scheme",
+        "command": "remove_tracked_color_scheme"
+    },
 ]
